@@ -389,14 +389,15 @@ const FEED_ARTICLES = [
   },
 ];
 
-// ─── FEED PAGE (Article reader, референс-стиль) ───────────────────────────────
+// ─── FEED PAGE (горизонтальный свайп между статьями) ─────────────────────────
 
 function FeedPage() {
   const [tab, setTab] = useState<"rec" | "subs">("rec");
   const [articles, setArticles] = useState(FEED_ARTICLES);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const articleRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [animDir, setAnimDir] = useState<"left" | "right" | null>(null);
+  const [animating, setAnimating] = useState(false);
+  const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
   const article = articles[currentIdx];
@@ -411,44 +412,52 @@ function FeedPage() {
     setArticles(a => a.map(x => x.id === id ? { ...x, saved: !x.saved } : x));
   };
 
-  const scrollToIdx = (idx: number) => {
-    if (idx < 0 || idx >= articles.length) return;
-    setCurrentIdx(idx);
-    articleRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const goTo = (idx: number, dir: "left" | "right") => {
+    if (animating || idx < 0 || idx >= articles.length) return;
+    setAnimDir(dir);
+    setAnimating(true);
+    setTimeout(() => {
+      setCurrentIdx(idx);
+      setAnimating(false);
+      setAnimDir(null);
+    }, 260);
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   };
 
-  const onScroll = () => {
-    if (!scrollRef.current) return;
-    const scrollTop = scrollRef.current.scrollTop;
-    let closest = 0;
-    let minDist = Infinity;
-    articleRefs.current.forEach((el, i) => {
-      if (!el) return;
-      const dist = Math.abs(el.offsetTop - scrollTop);
-      if (dist < minDist) { minDist = dist; closest = i; }
-    });
-    setCurrentIdx(closest);
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const dx = touchStartX.current - e.changedTouches[0].clientX;
+    const dy = touchStartY.current - e.changedTouches[0].clientY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      if (dx > 0) goTo(currentIdx + 1, "left");
+      else goTo(currentIdx - 1, "right");
+    }
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown") scrollToIdx(currentIdx + 1);
-      if (e.key === "ArrowUp") scrollToIdx(currentIdx - 1);
+      if (e.key === "ArrowRight") goTo(currentIdx + 1, "left");
+      if (e.key === "ArrowLeft") goTo(currentIdx - 1, "right");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [currentIdx]);
+  }, [currentIdx, animating]);
+
+  // Классы анимации
+  const slideOut = animDir === "left" ? "-translate-x-8 opacity-0" : "translate-x-8 opacity-0";
+  const cardClass = `transition-all duration-260 ease-out ${animating ? slideOut : "translate-x-0 opacity-100"}`;
 
   return (
-    <div className="fixed inset-0 bottom-16 flex flex-col bg-background overflow-hidden">
-
+    <div
+      className="fixed inset-0 bottom-16 flex flex-col bg-background overflow-hidden select-none"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       {/* ── Top bar ── */}
       <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-3 z-20">
-        {/* Like pill */}
         <button
           onClick={() => handleLike(article.id)}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border transition-all duration-200 ${article.liked ? "border-red-400/40 bg-red-400/10 text-red-400" : "border-border bg-card/80 text-muted-foreground hover:text-red-400"}`}
@@ -457,7 +466,6 @@ function FeedPage() {
           <span className="text-xs font-semibold">{formatNumber(article.likes)}</span>
         </button>
 
-        {/* Tab switcher */}
         <div className="flex items-center gap-0.5 bg-card/80 border border-border rounded-2xl p-1 backdrop-blur-sm">
           {(["rec", "subs"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -467,7 +475,6 @@ function FeedPage() {
           ))}
         </div>
 
-        {/* Avatar */}
         <button className="relative">
           <Avatar className="w-9 h-9 ring-2 ring-primary/30">
             <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
@@ -478,121 +485,94 @@ function FeedPage() {
         </button>
       </div>
 
-      {/* ── Progress bar ── */}
-      <div className="flex-shrink-0 flex items-center gap-1.5 px-5 pb-2">
+      {/* ── Dot indicators ── */}
+      <div className="flex-shrink-0 flex items-center justify-center gap-1.5 pb-3">
         {articles.map((_, i) => (
-          <button key={i} onClick={() => scrollToIdx(i)}
-            className={`h-1 rounded-full transition-all duration-300 ${i === currentIdx ? "bg-primary flex-[2]" : "bg-border flex-1"}`} />
+          <button key={i} onClick={() => goTo(i, i > currentIdx ? "left" : "right")}
+            className={`h-1.5 rounded-full transition-all duration-300 ${i === currentIdx ? "w-6 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground"}`} />
         ))}
       </div>
 
-      {/* ── Scrollable content + Right sidebar ── */}
+      {/* ── Article card (на всю высоту) ── */}
       <div className="flex-1 flex overflow-hidden">
+        {/* Scrollable article content */}
+        <div className={`flex-1 overflow-y-auto ${cardClass}`}>
+          <div className="px-5 pt-2 pb-6">
+            {/* Community */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className={`w-2 h-2 rounded-full ${article.dotColor}`} />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest font-mono-accent">
+                {article.community}
+              </span>
+              <span className="text-xs text-muted-foreground/40 ml-auto font-mono-accent">{article.time}</span>
+            </div>
 
-        {/* Article scroll area */}
-        <div
-          ref={scrollRef}
-          onScroll={onScroll}
-          onTouchStart={onTouchStart}
-          className="flex-1 overflow-y-auto scroll-smooth"
-          style={{ scrollSnapType: "none" }}
-        >
-          {articles.map((art, idx) => (
-            <div
-              key={art.id}
-              ref={el => { articleRefs.current[idx] = el; }}
-              className="px-5 pt-4 pb-8"
-              style={{ minHeight: "calc(100vh - 200px)" }}
-            >
-              {/* Community label */}
-              <div className="flex items-center gap-2 mb-3">
-                <div className={`w-2 h-2 rounded-full ${art.dotColor}`} />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest font-mono-accent">
-                  {art.community}
-                </span>
+            {/* Title */}
+            <h1 className="text-[24px] font-bold leading-tight text-foreground mb-1.5">
+              {article.title}
+            </h1>
+            <p className="text-[15px] font-semibold text-muted-foreground mb-5 leading-snug">
+              {article.subtitle}
+            </p>
+
+            {/* Author */}
+            <div className="flex items-center gap-3 mb-6 pb-5 border-b border-border/40">
+              <Avatar className="w-9 h-9 ring-1 ring-border">
+                <AvatarFallback className="bg-[hsl(220_13%_18%)] text-xs font-bold text-foreground">
+                  {article.user.initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-foreground">{article.user.name}</div>
+                <div className="text-xs text-muted-foreground font-mono-accent">{article.user.handle}</div>
               </div>
+              <button className="text-xs font-semibold text-primary border border-primary/30 px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-all">
+                + Читать
+              </button>
+            </div>
 
-              {/* Title block */}
-              <h1 className="text-[22px] font-bold leading-tight text-foreground mb-1">
-                {art.title}
-              </h1>
-              <p className="text-base font-semibold text-muted-foreground mb-4 leading-snug">
-                {art.subtitle}
-              </p>
-
-              {/* Author row */}
-              <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-border/50">
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback className="bg-[hsl(220_13%_18%)] text-xs font-bold text-foreground">
-                    {art.user.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <span className="text-xs font-semibold text-foreground">{art.user.name}</span>
-                  <span className="text-xs text-muted-foreground ml-2 font-mono-accent">{art.time}</span>
-                </div>
-                <button className="text-xs font-semibold text-primary hover:text-primary/70 transition-colors border border-primary/30 px-2.5 py-1 rounded-xl hover:bg-primary/10">
-                  + Читать
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="space-y-4">
-                {art.body.map((block, bi) =>
-                  block.type === "h2" ? (
-                    <h2 key={bi} className="text-lg font-bold text-foreground mt-6">
-                      {block.text}
-                    </h2>
-                  ) : (
-                    <p key={bi} className="text-[15px] leading-[1.75] text-foreground/80">
-                      {block.text}
-                    </p>
-                  )
-                )}
-              </div>
-
-              {/* Tags */}
-              <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-border/40">
-                {art.tags.map(t => (
-                  <span key={t} className="text-xs font-mono-accent text-primary/60 hover:text-primary cursor-pointer transition-colors bg-primary/8 px-2.5 py-1 rounded-lg">
-                    {t}
-                  </span>
-                ))}
-              </div>
-
-              {/* Bottom separator between articles */}
-              {idx < articles.length - 1 && (
-                <div className="mt-8 flex items-center gap-3">
-                  <div className="flex-1 h-px bg-border/60" />
-                  <span className="text-[10px] text-muted-foreground/40 font-mono-accent uppercase tracking-widest">далее</span>
-                  <div className="flex-1 h-px bg-border/60" />
-                </div>
+            {/* Body */}
+            <div className="space-y-4">
+              {article.body.map((block, bi) =>
+                block.type === "h2" ? (
+                  <h2 key={bi} className="text-[17px] font-bold text-foreground mt-5 mb-1">
+                    {block.text}
+                  </h2>
+                ) : (
+                  <p key={bi} className="text-[15px] leading-[1.8] text-foreground/80">
+                    {block.text}
+                  </p>
+                )
               )}
             </div>
-          ))}
+
+            {/* Tags */}
+            <div className="flex flex-wrap gap-2 mt-6 pt-5 border-t border-border/30">
+              {article.tags.map(t => (
+                <span key={t} className="text-xs font-mono-accent text-primary/60 hover:text-primary cursor-pointer transition-colors bg-primary/10 px-2.5 py-1 rounded-lg">
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* ── Right action rail ── */}
-        <div className="flex-shrink-0 w-14 flex flex-col items-center justify-center gap-5 pr-2 pb-4">
-          {/* Follow */}
+        <div className="flex-shrink-0 w-14 flex flex-col items-center justify-center gap-5 pr-2">
           <div className="flex flex-col items-center gap-1">
             <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-primary hover:bg-primary/10 transition-all">
               <Icon name="UserPlus" size={17} />
             </button>
           </div>
 
-          {/* Like */}
           <div className="flex flex-col items-center gap-1">
-            <button
-              onClick={() => handleLike(article.id)}
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all border ${article.liked ? "bg-red-400/15 border-red-400/40 text-red-400" : "bg-card border-border text-muted-foreground hover:text-red-400 hover:border-red-400/30"}`}
-            >
+            <button onClick={() => handleLike(article.id)}
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all border ${article.liked ? "bg-red-400/15 border-red-400/40 text-red-400" : "bg-card border-border text-muted-foreground hover:text-red-400 hover:border-red-400/30"}`}>
               <Icon name="Heart" size={17} className={article.liked ? "fill-red-400" : ""} />
             </button>
             <span className="text-[10px] text-muted-foreground font-mono-accent">{formatNumber(article.likes)}</span>
           </div>
 
-          {/* Comment */}
           <div className="flex flex-col items-center gap-1">
             <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
               <Icon name="MessageCircle" size={17} />
@@ -600,7 +580,6 @@ function FeedPage() {
             <span className="text-[10px] text-muted-foreground font-mono-accent">{formatNumber(article.comments)}</span>
           </div>
 
-          {/* Share */}
           <div className="flex flex-col items-center gap-1">
             <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-green-400 hover:border-green-400/30 transition-all">
               <Icon name="Share2" size={17} />
@@ -608,33 +587,41 @@ function FeedPage() {
             <span className="text-[10px] text-muted-foreground font-mono-accent">{formatNumber(article.reposts)}</span>
           </div>
 
-          {/* Save */}
           <div className="flex flex-col items-center gap-1">
-            <button
-              onClick={() => handleSave(article.id)}
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${article.saved ? "bg-primary/15 border-primary/40 text-primary" : "bg-card border-border text-muted-foreground hover:text-primary hover:border-primary/30"}`}
-            >
+            <button onClick={() => handleSave(article.id)}
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${article.saved ? "bg-primary/15 border-primary/40 text-primary" : "bg-card border-border text-muted-foreground hover:text-primary hover:border-primary/30"}`}>
               <Icon name="Bookmark" size={17} className={article.saved ? "fill-primary" : ""} />
             </button>
           </div>
 
-          {/* More */}
           <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all">
             <Icon name="MoreVertical" size={17} />
           </button>
         </div>
       </div>
 
-      {/* ── Bottom nav arrows ── */}
-      <div className="flex-shrink-0 flex items-center justify-center gap-8 py-2 border-t border-border/40">
-        <button onClick={() => scrollToIdx(currentIdx - 1)} disabled={currentIdx === 0}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground disabled:opacity-25 hover:text-foreground transition-all">
-          <Icon name="ChevronUp" size={14} /> Предыдущая
+      {/* ── Фиксированные стрелки снизу ── */}
+      <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-t border-border/40 bg-background/95 backdrop-blur-sm">
+        <button
+          onClick={() => goTo(currentIdx - 1, "right")}
+          disabled={currentIdx === 0}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-border bg-card text-sm font-medium text-muted-foreground disabled:opacity-25 hover:text-foreground hover:border-primary/30 transition-all active:scale-95"
+        >
+          <Icon name="ChevronLeft" size={16} />
+          Предыдущая
         </button>
-        <span className="text-[10px] text-muted-foreground/30 font-mono-accent">{currentIdx + 1} / {articles.length}</span>
-        <button onClick={() => scrollToIdx(currentIdx + 1)} disabled={currentIdx === articles.length - 1}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground disabled:opacity-25 hover:text-foreground transition-all">
-          Следующая <Icon name="ChevronDown" size={14} />
+
+        <span className="text-xs text-muted-foreground/40 font-mono-accent tabular-nums">
+          {currentIdx + 1} / {articles.length}
+        </span>
+
+        <button
+          onClick={() => goTo(currentIdx + 1, "left")}
+          disabled={currentIdx === articles.length - 1}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-border bg-card text-sm font-medium text-muted-foreground disabled:opacity-25 hover:text-foreground hover:border-primary/30 transition-all active:scale-95"
+        >
+          Следующая
+          <Icon name="ChevronRight" size={16} />
         </button>
       </div>
     </div>
