@@ -286,157 +286,356 @@ function HomePage() {
   );
 }
 
-// ─── FEED PAGE (TikTok-style swipe) ──────────────────────────────────────────
+// ─── FEED DATA (длинные тексты для режима чтения) ────────────────────────────
+
+const FEED_ARTICLES = [
+  {
+    id: 1,
+    community: "Дизайн & UI",
+    user: { name: "Мария Иванова", handle: "@mariia_iv", initials: "МИ" },
+    time: "2 мин",
+    title: "Тёмные интерфейсы: почему угольный лучше чёрного",
+    subtitle: "Руководство по комфортному дизайну",
+    body: [
+      { type: "p", text: "В эпоху цифровых экранов мы проводим за ними по 8–12 часов в сутки. Выбор цветовой схемы напрямую влияет на усталость глаз — и здесь скрывается один из главных мифов дизайна." },
+      { type: "h2", text: "Почему #000 — плохая идея" },
+      { type: "p", text: "Чистый чёрный (#000000) создаёт максимальный контраст с белым текстом. Это звучит хорошо в теории, но на практике вызывает эффект «ореола» — глаза постоянно адаптируются к резкому переходу." },
+      { type: "h2", text: "Правильный подход" },
+      { type: "p", text: "Используйте оттенки с лёгким цветовым смещением: тёмно-синие (#0d1117), угольные (#1a1a2e) или тёплые тёмно-серые (#1c1917). Они создают комфортную среду для длительного чтения." },
+      { type: "p", text: "Nexus использует именно такой подход — фон #0e0f13 с лёгким холодным смещением. Это снижает нагрузку на глаза при длительном просмотре контента." },
+    ],
+    tags: ["#дизайн", "#UX", "#тёмнаятема"],
+    likes: 248, comments: 34, reposts: 12, liked: false, saved: false,
+    accentColor: "from-violet-500/20 to-indigo-500/10",
+    dotColor: "bg-violet-400",
+  },
+  {
+    id: 2,
+    community: "Технологии",
+    user: { name: "Дмитрий Кравцов", handle: "@dkravtsov", initials: "ДК" },
+    time: "15 мин",
+    title: "Алгоритм рекомендаций: как он знает, что тебе понравится",
+    subtitle: "Разбираем персонализацию изнутри",
+    body: [
+      { type: "p", text: "Каждый раз, когда вы лайкаете пост, пролистываете статью или задерживаетесь на фото больше 3 секунд — алгоритм делает пометку. Но как из тысяч сигналов рождается точная рекомендация?" },
+      { type: "h2", text: "Матрица схожести интересов" },
+      { type: "p", text: "В основе лежит коллаборативная фильтрация: система находит пользователей со схожим поведением и предлагает вам контент, который понравился им. Чем больше у вас общих интересов — тем выше точность." },
+      { type: "h2", text: "Сигналы взаимодействия" },
+      { type: "p", text: "Не все действия равнозначны. Дочитать статью до конца — сильный сигнал. Лайкнуть, не читая — слабый. Сохранить в избранное — очень сильный. Алгоритм взвешивает каждое действие." },
+      { type: "p", text: "Именно поэтому осознанное взаимодействие с контентом делает ленту точнее. Чем честнее вы реагируете — тем умнее становится система." },
+    ],
+    tags: ["#алгоритмы", "#ML", "#рекомендации"],
+    likes: 512, comments: 89, reposts: 47, liked: true, saved: false,
+    accentColor: "from-blue-500/20 to-cyan-500/10",
+    dotColor: "bg-blue-400",
+  },
+  {
+    id: 3,
+    community: "Фотография",
+    user: { name: "Анна Белова", handle: "@abelova", initials: "АБ" },
+    time: "1 ч",
+    title: "Плёночная фотография в 2024: почему это не ностальгия",
+    subtitle: "Об аналоговом мышлении в цифровую эпоху",
+    body: [
+      { type: "p", text: "Плёнка переживает настоящий ренессанс. Продажи фотоплёнки растут третий год подряд, а средний возраст новых покупателей — 24 года. Это не ностальгия стариков. Это осознанный выбор поколения, выросшего на Instagram." },
+      { type: "h2", text: "Ограничение как инструмент" },
+      { type: "p", text: "36 кадров на катушке меняют отношение к съёмке фундаментально. Каждый кадр стоит денег и времени на проявку. Это заставляет думать прежде, чем нажать кнопку — и это делает фотографии лучше." },
+      { type: "h2", text: "Золотой час сегодня" },
+      { type: "p", text: "Сегодня я провёл два часа в парке с Canon AE-1 и Kodak Portra 400. Свет был невероятным — тёплый, боковой, с длинными тенями. Результаты увижу через неделю, когда сдам плёнку на проявку." },
+    ],
+    tags: ["#фото", "#плёнка", "#закат"],
+    likes: 1024, comments: 156, reposts: 83, liked: false, saved: true,
+    accentColor: "from-orange-500/20 to-amber-500/10",
+    dotColor: "bg-orange-400",
+  },
+  {
+    id: 4,
+    community: "Стартапы",
+    user: { name: "Игорь Смирнов", handle: "@igor_sm", initials: "ИС" },
+    time: "3 ч",
+    title: "500 пользователей за 6 часов без рекламы: наш опыт",
+    subtitle: "Честный разбор запуска бета-версии",
+    body: [
+      { type: "p", text: "Мы запустили бета-версию в среду в 14:00. К 20:00 было 500 зарегистрированных пользователей. Ни одного рубля на рекламу. Вот как это получилось — и что мы сделали неправильно." },
+      { type: "h2", text: "Что сработало" },
+      { type: "p", text: "Личные сообщения 200 людям из целевой аудитории за неделю до запуска. Не спам — персональные письма с объяснением, зачем мы создаём продукт и почему именно их мнение важно." },
+      { type: "h2", text: "Главный урок" },
+      { type: "p", text: "Решайте реальную боль. Наш продукт убирает 40 минут рутины в день для конкретной профессии. Когда есть такая чёткая ценность — пользователи сами рассказывают о вас друзьям." },
+      { type: "p", text: "Сейчас у нас 2300 пользователей и 34% дневная активность. Это лучший показатель за всю мою карьеру." },
+    ],
+    tags: ["#стартап", "#продукт", "#запуск"],
+    likes: 2100, comments: 341, reposts: 198, liked: false, saved: false,
+    accentColor: "from-emerald-500/20 to-teal-500/10",
+    dotColor: "bg-emerald-400",
+  },
+  {
+    id: 5,
+    community: "Музыка",
+    user: { name: "Саша Новикова", handle: "@sasha_nov", initials: "СН" },
+    time: "5 ч",
+    title: "Аналог + цифра: как мы записали трек мечты",
+    subtitle: "О гибридном звуке и тёплых текстурах",
+    body: [
+      { type: "p", text: "После трёх месяцев экспериментов мы наконец нашли звук, который искали. Секрет оказался неожиданным: старый синтезатор Juno-60 через современный цифровой процессор эффектов." },
+      { type: "h2", text: "Почему аналог звучит иначе" },
+      { type: "p", text: "Аналоговые схемы имеют физические несовершенства — лёгкий дрейф частоты, тепловой шум, нелинейности. Именно эти «ошибки» создают ощущение живого звука, которого нет в идеальном цифровом сигнале." },
+      { type: "h2", text: "Результат" },
+      { type: "p", text: "Трек выходит в следующую пятницу. Мы впервые по-настоящему довольны звучанием — это тот момент, к которому шли два года." },
+    ],
+    tags: ["#музыка", "#синт", "#запись"],
+    likes: 763, comments: 44, reposts: 31, liked: false, saved: false,
+    accentColor: "from-pink-500/20 to-rose-500/10",
+    dotColor: "bg-pink-400",
+  },
+];
+
+// ─── FEED PAGE (Article reader, референс-стиль) ───────────────────────────────
 
 function FeedPage() {
-  const [current, setCurrent] = useState(0);
-  const [posts, setPosts] = useState(POSTS);
-  const [direction, setDirection] = useState<"up" | "down" | null>(null);
-  const [animating, setAnimating] = useState(false);
+  const [tab, setTab] = useState<"rec" | "subs">("rec");
+  const [articles, setArticles] = useState(FEED_ARTICLES);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const articleRefs = useRef<(HTMLDivElement | null)[]>([]);
   const touchStartY = useRef(0);
-  const touchStartX = useRef(0);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  const goTo = (idx: number, dir: "up" | "down") => {
-    if (animating || idx < 0 || idx >= posts.length) return;
-    setDirection(dir);
-    setAnimating(true);
-    setTimeout(() => {
-      setCurrent(idx);
-      setAnimating(false);
-      setDirection(null);
-    }, 280);
-  };
+  const article = articles[currentIdx];
 
   const handleLike = (id: number) => {
-    setPosts(p => p.map(post =>
-      post.id === id ? { ...post, liked: !post.liked, likes: post.liked ? post.likes - 1 : post.likes + 1 } : post
+    setArticles(a => a.map(x =>
+      x.id === id ? { ...x, liked: !x.liked, likes: x.liked ? x.likes - 1 : x.likes + 1 } : x
     ));
+  };
+
+  const handleSave = (id: number) => {
+    setArticles(a => a.map(x => x.id === id ? { ...x, saved: !x.saved } : x));
+  };
+
+  const scrollToIdx = (idx: number) => {
+    if (idx < 0 || idx >= articles.length) return;
+    setCurrentIdx(idx);
+    articleRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
-    touchStartX.current = e.touches[0].clientX;
   };
 
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const dy = touchStartY.current - e.changedTouches[0].clientY;
-    const dx = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 50) {
-      if (dy > 0) goTo(current + 1, "up");
-      else goTo(current - 1, "down");
-    }
+  const onScroll = () => {
+    if (!scrollRef.current) return;
+    const scrollTop = scrollRef.current.scrollTop;
+    let closest = 0;
+    let minDist = Infinity;
+    articleRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const dist = Math.abs(el.offsetTop - scrollTop);
+      if (dist < minDist) { minDist = dist; closest = i; }
+    });
+    setCurrentIdx(closest);
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown") goTo(current + 1, "up");
-      if (e.key === "ArrowUp") goTo(current - 1, "down");
+      if (e.key === "ArrowDown") scrollToIdx(currentIdx + 1);
+      if (e.key === "ArrowUp") scrollToIdx(currentIdx - 1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [current, animating]);
-
-  const post = posts[current];
-
-  const slideClass = animating
-    ? direction === "up"
-      ? "-translate-y-4 opacity-0"
-      : "translate-y-4 opacity-0"
-    : "translate-y-0 opacity-100";
+  }, [currentIdx]);
 
   return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 bottom-16 bg-background flex flex-col overflow-hidden"
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
-      {/* Progress dots */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-        {posts.map((_, i) => (
-          <button key={i} onClick={() => goTo(i, i > current ? "up" : "down")}
-            className={`rounded-full transition-all duration-300 ${i === current ? "w-5 h-1.5 bg-primary" : "w-1.5 h-1.5 bg-white/25"}`} />
+    <div className="fixed inset-0 bottom-16 flex flex-col bg-background overflow-hidden">
+
+      {/* ── Top bar ── */}
+      <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-3 z-20">
+        {/* Like pill */}
+        <button
+          onClick={() => handleLike(article.id)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border transition-all duration-200 ${article.liked ? "border-red-400/40 bg-red-400/10 text-red-400" : "border-border bg-card/80 text-muted-foreground hover:text-red-400"}`}
+        >
+          <Icon name="Heart" size={16} className={article.liked ? "fill-red-400" : ""} />
+          <span className="text-xs font-semibold">{formatNumber(article.likes)}</span>
+        </button>
+
+        {/* Tab switcher */}
+        <div className="flex items-center gap-0.5 bg-card/80 border border-border rounded-2xl p-1 backdrop-blur-sm">
+          {(["rec", "subs"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              {t === "rec" ? "Рекомендации" : "Подписки"}
+            </button>
+          ))}
+        </div>
+
+        {/* Avatar */}
+        <button className="relative">
+          <Avatar className="w-9 h-9 ring-2 ring-primary/30">
+            <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
+              {CURRENT_USER.initials}
+            </AvatarFallback>
+          </Avatar>
+          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-background" />
+        </button>
+      </div>
+
+      {/* ── Progress bar ── */}
+      <div className="flex-shrink-0 flex items-center gap-1.5 px-5 pb-2">
+        {articles.map((_, i) => (
+          <button key={i} onClick={() => scrollToIdx(i)}
+            className={`h-1 rounded-full transition-all duration-300 ${i === currentIdx ? "bg-primary flex-[2]" : "bg-border flex-1"}`} />
         ))}
       </div>
 
-      {/* Card */}
-      <div className={`flex-1 flex flex-col px-4 pt-10 pb-2 transition-all duration-300 ease-out ${slideClass}`}>
-        <div className={`flex-1 rounded-3xl border border-border bg-gradient-to-br ${post.bg} bg-card flex flex-col p-6 overflow-hidden`}>
-          {/* Community badge */}
-          <div className="flex items-center justify-between mb-4">
-            <Badge className="text-xs px-3 py-1 font-medium border-0 bg-primary/20 text-primary">
-              {post.community}
-            </Badge>
-            <span className="text-xs text-muted-foreground font-mono-accent">{post.time}</span>
-          </div>
+      {/* ── Scrollable content + Right sidebar ── */}
+      <div className="flex-1 flex overflow-hidden">
 
-          {/* Author */}
-          <div className="flex items-center gap-3 mb-5">
-            <Avatar className="w-11 h-11 ring-2 ring-border">
-              <AvatarFallback className="bg-[hsl(220_13%_20%)] font-bold text-foreground">
-                {post.user.initials}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="font-semibold text-foreground">{post.user.name}</div>
-              <div className="text-xs text-muted-foreground font-mono-accent">{post.user.handle}</div>
+        {/* Article scroll area */}
+        <div
+          ref={scrollRef}
+          onScroll={onScroll}
+          onTouchStart={onTouchStart}
+          className="flex-1 overflow-y-auto scroll-smooth"
+          style={{ scrollSnapType: "none" }}
+        >
+          {articles.map((art, idx) => (
+            <div
+              key={art.id}
+              ref={el => { articleRefs.current[idx] = el; }}
+              className="px-5 pt-4 pb-8"
+              style={{ minHeight: "calc(100vh - 200px)" }}
+            >
+              {/* Community label */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`w-2 h-2 rounded-full ${art.dotColor}`} />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest font-mono-accent">
+                  {art.community}
+                </span>
+              </div>
+
+              {/* Title block */}
+              <h1 className="text-[22px] font-bold leading-tight text-foreground mb-1">
+                {art.title}
+              </h1>
+              <p className="text-base font-semibold text-muted-foreground mb-4 leading-snug">
+                {art.subtitle}
+              </p>
+
+              {/* Author row */}
+              <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-border/50">
+                <Avatar className="w-8 h-8">
+                  <AvatarFallback className="bg-[hsl(220_13%_18%)] text-xs font-bold text-foreground">
+                    {art.user.initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <span className="text-xs font-semibold text-foreground">{art.user.name}</span>
+                  <span className="text-xs text-muted-foreground ml-2 font-mono-accent">{art.time}</span>
+                </div>
+                <button className="text-xs font-semibold text-primary hover:text-primary/70 transition-colors border border-primary/30 px-2.5 py-1 rounded-xl hover:bg-primary/10">
+                  + Читать
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="space-y-4">
+                {art.body.map((block, bi) =>
+                  block.type === "h2" ? (
+                    <h2 key={bi} className="text-lg font-bold text-foreground mt-6">
+                      {block.text}
+                    </h2>
+                  ) : (
+                    <p key={bi} className="text-[15px] leading-[1.75] text-foreground/80">
+                      {block.text}
+                    </p>
+                  )
+                )}
+              </div>
+
+              {/* Tags */}
+              <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-border/40">
+                {art.tags.map(t => (
+                  <span key={t} className="text-xs font-mono-accent text-primary/60 hover:text-primary cursor-pointer transition-colors bg-primary/8 px-2.5 py-1 rounded-lg">
+                    {t}
+                  </span>
+                ))}
+              </div>
+
+              {/* Bottom separator between articles */}
+              {idx < articles.length - 1 && (
+                <div className="mt-8 flex items-center gap-3">
+                  <div className="flex-1 h-px bg-border/60" />
+                  <span className="text-[10px] text-muted-foreground/40 font-mono-accent uppercase tracking-widest">далее</span>
+                  <div className="flex-1 h-px bg-border/60" />
+                </div>
+              )}
             </div>
-            <button className="ml-auto px-3 py-1.5 rounded-xl text-xs font-semibold border border-primary/40 text-primary hover:bg-primary/10 transition-all">
-              Читать
+          ))}
+        </div>
+
+        {/* ── Right action rail ── */}
+        <div className="flex-shrink-0 w-14 flex flex-col items-center justify-center gap-5 pr-2 pb-4">
+          {/* Follow */}
+          <div className="flex flex-col items-center gap-1">
+            <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-primary hover:bg-primary/10 transition-all">
+              <Icon name="UserPlus" size={17} />
             </button>
           </div>
 
-          {/* Text */}
-          <p className="text-base leading-relaxed text-foreground/90 flex-1">{post.text}</p>
-
-          {/* Tags */}
-          <div className="flex flex-wrap gap-2 mt-4">
-            {post.tags.map(t => (
-              <span key={t} className="text-xs text-primary/70 font-mono-accent bg-primary/10 px-2.5 py-1 rounded-lg cursor-pointer hover:bg-primary/20 transition-all">{t}</span>
-            ))}
+          {/* Like */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={() => handleLike(article.id)}
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all border ${article.liked ? "bg-red-400/15 border-red-400/40 text-red-400" : "bg-card border-border text-muted-foreground hover:text-red-400 hover:border-red-400/30"}`}
+            >
+              <Icon name="Heart" size={17} className={article.liked ? "fill-red-400" : ""} />
+            </button>
+            <span className="text-[10px] text-muted-foreground font-mono-accent">{formatNumber(article.likes)}</span>
           </div>
+
+          {/* Comment */}
+          <div className="flex flex-col items-center gap-1">
+            <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
+              <Icon name="MessageCircle" size={17} />
+            </button>
+            <span className="text-[10px] text-muted-foreground font-mono-accent">{formatNumber(article.comments)}</span>
+          </div>
+
+          {/* Share */}
+          <div className="flex flex-col items-center gap-1">
+            <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-green-400 hover:border-green-400/30 transition-all">
+              <Icon name="Share2" size={17} />
+            </button>
+            <span className="text-[10px] text-muted-foreground font-mono-accent">{formatNumber(article.reposts)}</span>
+          </div>
+
+          {/* Save */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={() => handleSave(article.id)}
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${article.saved ? "bg-primary/15 border-primary/40 text-primary" : "bg-card border-border text-muted-foreground hover:text-primary hover:border-primary/30"}`}
+            >
+              <Icon name="Bookmark" size={17} className={article.saved ? "fill-primary" : ""} />
+            </button>
+          </div>
+
+          {/* More */}
+          <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all">
+            <Icon name="MoreVertical" size={17} />
+          </button>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className={`px-4 pb-4 transition-all duration-300 ease-out ${slideClass}`}>
-        <div className="flex items-center justify-between bg-card border border-border rounded-2xl px-4 py-3">
-          <button onClick={() => handleLike(post.id)}
-            className={`flex items-center gap-2 text-sm font-medium transition-all ${post.liked ? "text-red-400" : "text-muted-foreground hover:text-red-400"}`}>
-            <Icon name="Heart" size={18} className={post.liked ? "fill-red-400" : ""} />
-            {formatNumber(post.likes)}
-          </button>
-          <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all">
-            <Icon name="MessageCircle" size={18} />
-            {formatNumber(post.comments)}
-          </button>
-          <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-green-400 transition-all">
-            <Icon name="Repeat2" size={18} />
-            {formatNumber(post.reposts)}
-          </button>
-          <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all">
-            <Icon name="Bookmark" size={18} />
-          </button>
-          <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-all">
-            <Icon name="Share2" size={18} />
-          </button>
-        </div>
-
-        {/* Nav hint */}
-        <div className="flex items-center justify-center gap-6 mt-3">
-          <button onClick={() => goTo(current - 1, "down")}
-            disabled={current === 0}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground disabled:opacity-25 hover:text-foreground transition-all">
-            <Icon name="ChevronUp" size={14} /> Предыдущий
-          </button>
-          <span className="text-xs text-muted-foreground/40 font-mono-accent">{current + 1} / {posts.length}</span>
-          <button onClick={() => goTo(current + 1, "up")}
-            disabled={current === posts.length - 1}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground disabled:opacity-25 hover:text-foreground transition-all">
-            Следующий <Icon name="ChevronDown" size={14} />
-          </button>
-        </div>
+      {/* ── Bottom nav arrows ── */}
+      <div className="flex-shrink-0 flex items-center justify-center gap-8 py-2 border-t border-border/40">
+        <button onClick={() => scrollToIdx(currentIdx - 1)} disabled={currentIdx === 0}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground disabled:opacity-25 hover:text-foreground transition-all">
+          <Icon name="ChevronUp" size={14} /> Предыдущая
+        </button>
+        <span className="text-[10px] text-muted-foreground/30 font-mono-accent">{currentIdx + 1} / {articles.length}</span>
+        <button onClick={() => scrollToIdx(currentIdx + 1)} disabled={currentIdx === articles.length - 1}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground disabled:opacity-25 hover:text-foreground transition-all">
+          Следующая <Icon name="ChevronDown" size={14} />
+        </button>
       </div>
     </div>
   );
