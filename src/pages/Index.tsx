@@ -389,7 +389,55 @@ const FEED_ARTICLES = [
   },
 ];
 
-// ─── FEED PAGE (горизонтальный свайп между статьями) ─────────────────────────
+// ─── FEED STATIC DATA ─────────────────────────────────────────────────────────
+
+const FEED_CATEGORIES = [
+  { id: "all", label: "Все", icon: "Layers" },
+  { id: "design", label: "Дизайн", icon: "Palette" },
+  { id: "tech", label: "Технологии", icon: "Cpu" },
+  { id: "photo", label: "Фото", icon: "Camera" },
+  { id: "startups", label: "Стартапы", icon: "Rocket" },
+  { id: "music", label: "Музыка", icon: "Music" },
+];
+
+const FEED_NEWS = [
+  { id: 1, label: "🔥 Горячее", title: "OpenAI представила новую модель с голосовым режимом", time: "1ч" },
+  { id: 2, label: "📈 Тренд", title: "Венчурные инвестиции в ИИ-стартапы выросли на 340%", time: "3ч" },
+  { id: 3, label: "🎨 Дизайн", title: "Figma выпустила встроенный AI-редактор прототипов", time: "5ч" },
+];
+
+const FEED_TOP_AUTHORS = [
+  { name: "Мария Иванова", handle: "@mariia_iv", initials: "МИ", followers: 4200, posts: 312, verified: true },
+  { name: "Дмитрий Кравцов", handle: "@dkravtsov", initials: "ДК", followers: 8900, posts: 541, verified: true },
+  { name: "Анна Белова", handle: "@abelova", initials: "АБ", followers: 3100, posts: 198, verified: false },
+  { name: "Саша Новикова", handle: "@sasha_nov", initials: "СН", followers: 5600, posts: 227, verified: true },
+];
+
+const FEED_COMMENTS_MAP: Record<number, { id: number; user: string; initials: string; text: string; time: string; likes: number }[]> = {
+  1: [
+    { id: 1, user: "Дмитрий К.", initials: "ДК", text: "Полностью согласен! Сам перешёл на #1a1a2e — глаза действительно меньше устают.", time: "10м", likes: 24 },
+    { id: 2, user: "Анна Б.", initials: "АБ", text: "А как насчёт OLED экранов? Там чистый чёрный наоборот экономит батарею 🤔", time: "25м", likes: 18 },
+    { id: 3, user: "Саша Н.", initials: "СН", text: "Nexus тому пример — тут сидишь часами и глаза не болят 🙌", time: "1ч", likes: 9 },
+  ],
+  2: [
+    { id: 1, user: "Мария И.", initials: "МИ", text: "Про время просмотра как сигнал — очень важный инсайт. Раньше думала, что лайки главное.", time: "5м", likes: 41 },
+    { id: 2, user: "Иван К.", initials: "ИК", text: "Получается, если читать внимательно — алгоритм умнеет быстрее?", time: "30м", likes: 12 },
+  ],
+  3: [
+    { id: 1, user: "Дмитрий К.", initials: "ДК", text: "Снимал на Portra 400 прошлым летом. Цвета просто волшебные, особенно на закате.", time: "2ч", likes: 33 },
+    { id: 2, user: "Иван К.", initials: "ИК", text: "Жду результатов! Плёнка — это особое ощущение ожидания.", time: "3ч", likes: 7 },
+  ],
+  4: [
+    { id: 1, user: "Саша Н.", initials: "СН", text: "200 персональных сообщений — это титанический труд. Снимаю шляпу!", time: "1ч", likes: 87 },
+    { id: 2, user: "Анна Б.", initials: "АБ", text: "34% DAU — это невероятно. Наш продукт в два раза меньше. Надо переосмыслить онбординг.", time: "2ч", likes: 29 },
+    { id: 3, user: "Мария И.", initials: "МИ", text: "«Решайте реальную боль» — это должно быть первой заповедью продуктолога.", time: "3ч", likes: 64 },
+  ],
+  5: [
+    { id: 1, user: "Иван К.", initials: "ИК", text: "Juno-60 — легенда. Слышал, их сейчас очень сложно достать в нормальном состоянии.", time: "4ч", likes: 15 },
+  ],
+};
+
+// ─── FEED PAGE (горизонтальный свайп + комментарии + категории + новости) ─────
 
 function FeedPage() {
   const [tab, setTab] = useState<"rec" | "subs">("rec");
@@ -397,10 +445,16 @@ function FeedPage() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [animDir, setAnimDir] = useState<"left" | "right" | null>(null);
   const [animating, setAnimating] = useState(false);
+  const [category, setCategory] = useState("all");
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [commentLikes, setCommentLikes] = useState<Record<number, boolean>>({});
+  const [followedAuthors, setFollowedAuthors] = useState<Record<string, boolean>>({});
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
   const article = articles[currentIdx];
+  const comments = FEED_COMMENTS_MAP[article.id] ?? [];
 
   const handleLike = (id: number) => {
     setArticles(a => a.map(x =>
@@ -412,8 +466,17 @@ function FeedPage() {
     setArticles(a => a.map(x => x.id === id ? { ...x, saved: !x.saved } : x));
   };
 
+  const toggleCommentLike = (cid: number) => {
+    setCommentLikes(prev => ({ ...prev, [cid]: !prev[cid] }));
+  };
+
+  const toggleFollow = (handle: string) => {
+    setFollowedAuthors(prev => ({ ...prev, [handle]: !prev[handle] }));
+  };
+
   const goTo = (idx: number, dir: "left" | "right") => {
     if (animating || idx < 0 || idx >= articles.length) return;
+    setCommentsOpen(false);
     setAnimDir(dir);
     setAnimating(true);
     setTimeout(() => {
@@ -424,11 +487,13 @@ function FeedPage() {
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
+    if (commentsOpen) return;
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
+    if (commentsOpen) return;
     const dx = touchStartX.current - e.changedTouches[0].clientX;
     const dy = touchStartY.current - e.changedTouches[0].clientY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
@@ -439,16 +504,17 @@ function FeedPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (commentsOpen) return;
       if (e.key === "ArrowRight") goTo(currentIdx + 1, "left");
       if (e.key === "ArrowLeft") goTo(currentIdx - 1, "right");
+      if (e.key === "Escape") setCommentsOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [currentIdx, animating]);
+  }, [currentIdx, animating, commentsOpen]);
 
-  // Классы анимации
   const slideOut = animDir === "left" ? "-translate-x-8 opacity-0" : "translate-x-8 opacity-0";
-  const cardClass = `transition-all duration-260 ease-out ${animating ? slideOut : "translate-x-0 opacity-100"}`;
+  const cardClass = `transition-all duration-[260ms] ease-out ${animating ? slideOut : "translate-x-0 opacity-100"}`;
 
   return (
     <div
@@ -457,19 +523,19 @@ function FeedPage() {
       onTouchEnd={onTouchEnd}
     >
       {/* ── Top bar ── */}
-      <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-3 z-20">
+      <div className="flex-shrink-0 flex items-center justify-between px-4 pt-4 pb-2 z-20">
         <button
           onClick={() => handleLike(article.id)}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border transition-all duration-200 ${article.liked ? "border-red-400/40 bg-red-400/10 text-red-400" : "border-border bg-card/80 text-muted-foreground hover:text-red-400"}`}
         >
-          <Icon name="Heart" size={16} className={article.liked ? "fill-red-400" : ""} />
+          <Icon name="Heart" size={15} className={article.liked ? "fill-red-400" : ""} />
           <span className="text-xs font-semibold">{formatNumber(article.likes)}</span>
         </button>
 
         <div className="flex items-center gap-0.5 bg-card/80 border border-border rounded-2xl p-1 backdrop-blur-sm">
           {(["rec", "subs"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
               {t === "rec" ? "Рекомендации" : "Подписки"}
             </button>
           ))}
@@ -477,112 +543,185 @@ function FeedPage() {
 
         <button className="relative">
           <Avatar className="w-9 h-9 ring-2 ring-primary/30">
-            <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
-              {CURRENT_USER.initials}
-            </AvatarFallback>
+            <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">{CURRENT_USER.initials}</AvatarFallback>
           </Avatar>
           <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-background" />
         </button>
       </div>
 
+      {/* ── Categories ── */}
+      <div className="flex-shrink-0 px-4 pb-2">
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+          {FEED_CATEGORIES.map(c => (
+            <button key={c.id} onClick={() => setCategory(c.id)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${category === c.id ? "bg-primary/15 border-primary/40 text-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}>
+              <Icon name={c.icon} size={12} />
+              {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ── Dot indicators ── */}
-      <div className="flex-shrink-0 flex items-center justify-center gap-1.5 pb-3">
+      <div className="flex-shrink-0 flex items-center justify-center gap-1.5 pb-2">
         {articles.map((_, i) => (
           <button key={i} onClick={() => goTo(i, i > currentIdx ? "left" : "right")}
             className={`h-1.5 rounded-full transition-all duration-300 ${i === currentIdx ? "w-6 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground"}`} />
         ))}
       </div>
 
-      {/* ── Article card (на всю высоту) ── */}
+      {/* ── Main area: article + right rail ── */}
       <div className="flex-1 flex overflow-hidden">
+
         {/* Scrollable article content */}
         <div className={`flex-1 overflow-y-auto ${cardClass}`}>
-          <div className="px-5 pt-2 pb-6">
-            {/* Community */}
-            <div className="flex items-center gap-2 mb-4">
+          <div className="px-4 pt-1 pb-4">
+
+            {/* Community + time */}
+            <div className="flex items-center gap-2 mb-3">
               <div className={`w-2 h-2 rounded-full ${article.dotColor}`} />
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest font-mono-accent">
-                {article.community}
-              </span>
-              <span className="text-xs text-muted-foreground/40 ml-auto font-mono-accent">{article.time}</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest font-mono-accent">{article.community}</span>
+              <span className="text-[11px] text-muted-foreground/40 ml-auto font-mono-accent">{article.time}</span>
             </div>
 
             {/* Title */}
-            <h1 className="text-[24px] font-bold leading-tight text-foreground mb-1.5">
-              {article.title}
-            </h1>
-            <p className="text-[15px] font-semibold text-muted-foreground mb-5 leading-snug">
-              {article.subtitle}
-            </p>
+            <h1 className="text-[22px] font-bold leading-tight text-foreground mb-1">{article.title}</h1>
+            <p className="text-[14px] font-semibold text-muted-foreground mb-4 leading-snug">{article.subtitle}</p>
 
             {/* Author */}
-            <div className="flex items-center gap-3 mb-6 pb-5 border-b border-border/40">
+            <div className="flex items-center gap-3 mb-5 pb-4 border-b border-border/40">
               <Avatar className="w-9 h-9 ring-1 ring-border">
-                <AvatarFallback className="bg-[hsl(220_13%_18%)] text-xs font-bold text-foreground">
-                  {article.user.initials}
-                </AvatarFallback>
+                <AvatarFallback className="bg-[hsl(220_13%_18%)] text-xs font-bold text-foreground">{article.user.initials}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="text-sm font-semibold text-foreground">{article.user.name}</div>
                 <div className="text-xs text-muted-foreground font-mono-accent">{article.user.handle}</div>
               </div>
-              <button className="text-xs font-semibold text-primary border border-primary/30 px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-all">
-                + Читать
+              <button
+                onClick={() => toggleFollow(article.user.handle)}
+                className={`text-xs font-semibold border px-3 py-1.5 rounded-xl transition-all ${followedAuthors[article.user.handle] ? "bg-primary/15 border-primary/40 text-primary" : "border-primary/30 text-primary hover:bg-primary/10"}`}>
+                {followedAuthors[article.user.handle] ? "Читаю" : "+ Читать"}
               </button>
             </div>
 
             {/* Body */}
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {article.body.map((block, bi) =>
                 block.type === "h2" ? (
-                  <h2 key={bi} className="text-[17px] font-bold text-foreground mt-5 mb-1">
-                    {block.text}
-                  </h2>
+                  <h2 key={bi} className="text-[16px] font-bold text-foreground mt-4 mb-0.5">{block.text}</h2>
                 ) : (
-                  <p key={bi} className="text-[15px] leading-[1.8] text-foreground/80">
-                    {block.text}
-                  </p>
+                  <p key={bi} className="text-[14px] leading-[1.75] text-foreground/80">{block.text}</p>
                 )
               )}
             </div>
 
             {/* Tags */}
-            <div className="flex flex-wrap gap-2 mt-6 pt-5 border-t border-border/30">
+            <div className="flex flex-wrap gap-2 mt-5 pt-4 border-t border-border/30">
               {article.tags.map(t => (
-                <span key={t} className="text-xs font-mono-accent text-primary/60 hover:text-primary cursor-pointer transition-colors bg-primary/10 px-2.5 py-1 rounded-lg">
-                  {t}
-                </span>
+                <span key={t} className="text-xs font-mono-accent text-primary/60 hover:text-primary cursor-pointer transition-colors bg-primary/10 px-2.5 py-1 rounded-lg">{t}</span>
               ))}
             </div>
+
+            {/* ── News of the day ── */}
+            <div className="mt-6 pt-4 border-t border-border/30">
+              <div className="flex items-center gap-2 mb-3">
+                <Icon name="Newspaper" size={14} className="text-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono-accent">Новости дня</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {FEED_NEWS.map(n => (
+                  <div key={n.id} className="flex items-start gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/25 cursor-pointer transition-all">
+                    <span className="text-[11px] font-semibold text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg flex-shrink-0">{n.label}</span>
+                    <p className="text-xs text-foreground/85 leading-snug flex-1">{n.title}</p>
+                    <span className="text-[10px] text-muted-foreground/50 font-mono-accent flex-shrink-0">{n.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Top authors ── */}
+            <div className="mt-6 pt-4 border-t border-border/30">
+              <div className="flex items-center gap-2 mb-3">
+                <Icon name="Star" size={14} className="text-yellow-400" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono-accent">Лучшие авторы</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {FEED_TOP_AUTHORS.map((a, i) => (
+                  <div key={a.handle} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+                    <span className="text-[11px] font-bold text-muted-foreground/50 font-mono-accent w-4">#{i + 1}</span>
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className="bg-[hsl(220_13%_18%)] text-xs font-bold text-foreground">{a.initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-semibold text-foreground truncate">{a.name}</span>
+                        {a.verified && <Icon name="BadgeCheck" size={12} className="text-primary flex-shrink-0" />}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-mono-accent">{formatNumber(a.followers)} подп. · {a.posts} постов</div>
+                    </div>
+                    <button
+                      onClick={() => toggleFollow(a.handle)}
+                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-all flex-shrink-0 ${followedAuthors[a.handle] ? "bg-primary/15 border-primary/40 text-primary" : "border-border text-muted-foreground hover:text-primary hover:border-primary/30"}`}>
+                      {followedAuthors[a.handle] ? "Читаю" : "+ Читать"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Recommended articles ── */}
+            <div className="mt-6 pt-4 border-t border-border/30 pb-2">
+              <div className="flex items-center gap-2 mb-3">
+                <Icon name="Sparkles" size={14} className="text-primary" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono-accent">Похожие материалы</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {articles.filter(a => a.id !== article.id).slice(0, 3).map(a => (
+                  <button key={a.id} onClick={() => goTo(articles.findIndex(x => x.id === a.id), "left")}
+                    className="flex items-start gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/25 transition-all text-left">
+                    <div className={`w-1.5 h-full min-h-[2rem] rounded-full ${a.dotColor} flex-shrink-0 mt-0.5`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-foreground leading-snug line-clamp-2">{a.title}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1 font-mono-accent">{a.community} · {a.time}</p>
+                    </div>
+                    <Icon name="ChevronRight" size={14} className="text-muted-foreground/50 flex-shrink-0 mt-0.5" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
           </div>
         </div>
 
         {/* ── Right action rail ── */}
-        <div className="flex-shrink-0 w-14 flex flex-col items-center justify-center gap-5 pr-2">
+        <div className="flex-shrink-0 w-13 flex flex-col items-center justify-center gap-4 pr-2">
           <div className="flex flex-col items-center gap-1">
-            <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-primary hover:bg-primary/10 transition-all">
-              <Icon name="UserPlus" size={17} />
+            <button
+              onClick={() => toggleFollow(article.user.handle)}
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${followedAuthors[article.user.handle] ? "bg-primary/15 border-primary/40 text-primary" : "bg-card border-border text-primary hover:bg-primary/10"}`}>
+              <Icon name={followedAuthors[article.user.handle] ? "UserCheck" : "UserPlus"} size={16} />
             </button>
           </div>
 
           <div className="flex flex-col items-center gap-1">
             <button onClick={() => handleLike(article.id)}
               className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all border ${article.liked ? "bg-red-400/15 border-red-400/40 text-red-400" : "bg-card border-border text-muted-foreground hover:text-red-400 hover:border-red-400/30"}`}>
-              <Icon name="Heart" size={17} className={article.liked ? "fill-red-400" : ""} />
+              <Icon name="Heart" size={16} className={article.liked ? "fill-red-400" : ""} />
             </button>
             <span className="text-[10px] text-muted-foreground font-mono-accent">{formatNumber(article.likes)}</span>
           </div>
 
           <div className="flex flex-col items-center gap-1">
-            <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
-              <Icon name="MessageCircle" size={17} />
+            <button onClick={() => setCommentsOpen(true)}
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${commentsOpen ? "bg-primary/15 border-primary/40 text-primary" : "bg-card border-border text-muted-foreground hover:text-primary hover:border-primary/30"}`}>
+              <Icon name="MessageCircle" size={16} />
             </button>
             <span className="text-[10px] text-muted-foreground font-mono-accent">{formatNumber(article.comments)}</span>
           </div>
 
           <div className="flex flex-col items-center gap-1">
             <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-green-400 hover:border-green-400/30 transition-all">
-              <Icon name="Share2" size={17} />
+              <Icon name="Share2" size={16} />
             </button>
             <span className="text-[10px] text-muted-foreground font-mono-accent">{formatNumber(article.reposts)}</span>
           </div>
@@ -590,40 +729,106 @@ function FeedPage() {
           <div className="flex flex-col items-center gap-1">
             <button onClick={() => handleSave(article.id)}
               className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${article.saved ? "bg-primary/15 border-primary/40 text-primary" : "bg-card border-border text-muted-foreground hover:text-primary hover:border-primary/30"}`}>
-              <Icon name="Bookmark" size={17} className={article.saved ? "fill-primary" : ""} />
+              <Icon name="Bookmark" size={16} className={article.saved ? "fill-primary" : ""} />
             </button>
           </div>
 
           <button className="w-10 h-10 rounded-2xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all">
-            <Icon name="MoreVertical" size={17} />
+            <Icon name="MoreVertical" size={16} />
           </button>
         </div>
       </div>
 
       {/* ── Фиксированные стрелки снизу ── */}
-      <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-t border-border/40 bg-background/95 backdrop-blur-sm">
-        <button
-          onClick={() => goTo(currentIdx - 1, "right")}
-          disabled={currentIdx === 0}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-border bg-card text-sm font-medium text-muted-foreground disabled:opacity-25 hover:text-foreground hover:border-primary/30 transition-all active:scale-95"
-        >
-          <Icon name="ChevronLeft" size={16} />
-          Предыдущая
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 border-t border-border/40 bg-background/95 backdrop-blur-sm">
+        <button onClick={() => goTo(currentIdx - 1, "right")} disabled={currentIdx === 0}
+          className="flex items-center gap-2 px-4 py-2 rounded-2xl border border-border bg-card text-sm font-medium text-muted-foreground disabled:opacity-25 hover:text-foreground hover:border-primary/30 transition-all active:scale-95">
+          <Icon name="ChevronLeft" size={15} /> Предыдущая
         </button>
-
-        <span className="text-xs text-muted-foreground/40 font-mono-accent tabular-nums">
-          {currentIdx + 1} / {articles.length}
-        </span>
-
-        <button
-          onClick={() => goTo(currentIdx + 1, "left")}
-          disabled={currentIdx === articles.length - 1}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-border bg-card text-sm font-medium text-muted-foreground disabled:opacity-25 hover:text-foreground hover:border-primary/30 transition-all active:scale-95"
-        >
-          Следующая
-          <Icon name="ChevronRight" size={16} />
+        <span className="text-xs text-muted-foreground/40 font-mono-accent tabular-nums">{currentIdx + 1} / {articles.length}</span>
+        <button onClick={() => goTo(currentIdx + 1, "left")} disabled={currentIdx === articles.length - 1}
+          className="flex items-center gap-2 px-4 py-2 rounded-2xl border border-border bg-card text-sm font-medium text-muted-foreground disabled:opacity-25 hover:text-foreground hover:border-primary/30 transition-all active:scale-95">
+          Следующая <Icon name="ChevronRight" size={15} />
         </button>
       </div>
+
+      {/* ── Comments sheet ── */}
+      {commentsOpen && (
+        <div className="absolute inset-0 z-40 flex flex-col justify-end">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCommentsOpen(false)} />
+
+          {/* Sheet */}
+          <div className="relative bg-[hsl(220_13%_9%)] border-t border-border rounded-t-3xl flex flex-col animate-slide-up"
+            style={{ maxHeight: "70%" }}>
+            {/* Handle */}
+            <div className="flex items-center justify-center pt-3 pb-2">
+              <div className="w-10 h-1 rounded-full bg-border" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pb-3 border-b border-border/50">
+              <span className="font-semibold text-foreground">Комментарии</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground font-mono-accent">{comments.length}</span>
+                <button onClick={() => setCommentsOpen(false)} className="p-1.5 rounded-xl hover:bg-secondary text-muted-foreground transition-all">
+                  <Icon name="X" size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Comments list */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-4">
+              {comments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <Icon name="MessageCircle" size={32} className="mb-2 opacity-30" />
+                  <p className="text-sm">Пока нет комментариев</p>
+                  <p className="text-xs opacity-60">Будьте первым!</p>
+                </div>
+              ) : comments.map(c => (
+                <div key={c.id} className="flex gap-3">
+                  <Avatar className="w-8 h-8 flex-shrink-0">
+                    <AvatarFallback className="bg-[hsl(220_13%_18%)] text-xs font-bold text-foreground">{c.initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-semibold text-foreground">{c.user}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono-accent">{c.time}</span>
+                    </div>
+                    <p className="text-sm text-foreground/85 leading-relaxed">{c.text}</p>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <button onClick={() => toggleCommentLike(c.id)}
+                        className={`flex items-center gap-1 text-xs transition-all ${commentLikes[c.id] ? "text-red-400" : "text-muted-foreground hover:text-red-400"}`}>
+                        <Icon name="Heart" size={12} className={commentLikes[c.id] ? "fill-red-400" : ""} />
+                        {c.likes + (commentLikes[c.id] ? 1 : 0)}
+                      </button>
+                      <button className="text-xs text-muted-foreground hover:text-primary transition-colors">Ответить</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Comment input */}
+            <div className="px-4 py-3 border-t border-border/50 flex items-center gap-2">
+              <Avatar className="w-7 h-7 flex-shrink-0">
+                <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">{CURRENT_USER.initials}</AvatarFallback>
+              </Avatar>
+              <input
+                value={newComment}
+                onChange={e => setNewComment(e.target.value)}
+                placeholder="Написать комментарий..."
+                className="flex-1 bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/40 transition-all"
+              />
+              <button
+                className={`p-2 rounded-xl transition-all ${newComment.trim() ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground opacity-50"}`}
+                onClick={() => setNewComment("")}>
+                <Icon name="Send" size={15} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
